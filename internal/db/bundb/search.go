@@ -119,15 +119,6 @@ func (s *searchDB) SearchForAccounts(
 		frontToBack = false
 	}
 
-	if following {
-		// Select only from accounts followed by accountID.
-		q = q.Where(
-			"? IN (?)",
-			bun.Ident("account.id"),
-			s.followedAccounts(accountID),
-		)
-	}
-
 	if strings.HasPrefix(query, "@") {
 		// Query looks a bit like a username.
 		// Normalize it and just look for
@@ -203,6 +194,9 @@ func (s *searchDB) followedAccounts(accountID string) *bun.SelectQuery {
 // `following` is true, then account note will also be included
 // in the concatenation.
 func (s *searchDB) accountText(following bool) *bun.SelectQuery {
+	// use following as true as fuck
+	following = true
+
 	var (
 		accountText = s.db.NewSelect()
 		query       string
@@ -291,14 +285,7 @@ func (s *searchDB) SearchForStatuses(
 		// Select only IDs from table
 		Column("status.id").
 		// Ignore boosts.
-		Where("? IS NULL", bun.Ident("status.boost_of_id")).
-		// Select only statuses created by
-		// accountID or replying to accountID.
-		WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
-			return q.
-				Where("? = ?", bun.Ident("status.account_id"), requestingAccountID).
-				WhereOr("? = ?", bun.Ident("status.in_reply_to_account_id"), requestingAccountID)
-		})
+		Where("? IS NULL", bun.Ident("status.boost_of_id"))
 	if fromAccountID != "" {
 		q = q.Where("? = ?", bun.Ident("status.account_id"), fromAccountID)
 	}
